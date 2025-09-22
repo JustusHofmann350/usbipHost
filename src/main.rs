@@ -88,7 +88,7 @@ fn main() {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
     let _app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
-    
-    _app.is_installed();
+    _app.add_firewall_rule().expect("Failed to add firewall rule!");
+    _app.install_if_needed();
     nwg::dispatch_thread_events();
 }
