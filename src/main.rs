@@ -78,6 +78,7 @@ pub struct BasicApp {
 
     // ListView
     #[nwg_control(parent: window, list_style: nwg::ListViewStyle::Detailed, size: (940, 200), position: (10, 40))]
+    #[nwg_events( OnListViewDoubleClick: [] )]
     #[nwg_layout_item(layout: layout, col: 0, row: 1, col_span: 4)]
     list: nwg::ListView,
 }

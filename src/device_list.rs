@@ -1,5 +1,8 @@
 use std::process::{Command, Stdio};
+use std::os::windows::process::CommandExt;
 use std::io::Read;
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone)]
 pub struct UsbipDevice {
@@ -13,6 +16,7 @@ pub struct UsbipDevice {
 pub fn list_devices() -> Vec<UsbipDevice> {
     let output = Command::new("usbipd")
         .args(&["list"])
+        .creation_flags(CREATE_NO_WINDOW)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -53,6 +57,7 @@ pub fn list_devices() -> Vec<UsbipDevice> {
 pub fn bind_device(busid: &str) -> Result<(), String> {
     let output = Command::new("usbipd")
         .args(&["bind", "-f", "-b", busid])
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| e.to_string())?;
     if output.status.success() { Ok(()) }
@@ -61,6 +66,7 @@ pub fn bind_device(busid: &str) -> Result<(), String> {
 pub fn unbind_device(busid: &str) -> Result<(), String> {
     let output = Command::new("usbipd")
         .args(&["unbind", "-b", busid])
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| e.to_string())?;
     if output.status.success() { Ok(()) }
