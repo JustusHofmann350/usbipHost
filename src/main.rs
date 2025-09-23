@@ -41,7 +41,7 @@ pub struct BasicApp {
     upgrade_menu: nwg::MenuItem,
 
     #[nwg_control(parent: service_menu, text: "Uninstall")]
-    #[nwg_events()]
+    #[nwg_events( OnButtonClick: [BasicApp::uninstall_usbip] )]
     uninstall_menu: nwg::MenuItem,
 
     #[nwg_control(parent: service_menu, text: "Update ID-List")]
