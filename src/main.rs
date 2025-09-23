@@ -4,6 +4,7 @@
     Unlike `basic_d`, this example uses layout to position the controls in the window
 */
 mod menu_handlers;
+mod windows;
 
 extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
@@ -37,11 +38,11 @@ pub struct BasicApp {
     service_menu: nwg::Menu,
 
     #[nwg_control(parent: service_menu, text: "Upgrade")]
-    #[nwg_events()]
+    #[nwg_events( OnMenuItemSelected: [BasicApp::upgrade_usbipd] )]
     upgrade_menu: nwg::MenuItem,
 
     #[nwg_control(parent: service_menu, text: "Uninstall")]
-    #[nwg_events( OnButtonClick: [BasicApp::uninstall_usbip] )]
+    #[nwg_events( OnMenuItemSelected: [BasicApp::uninstall_usbip] )]
     uninstall_menu: nwg::MenuItem,
 
     #[nwg_control(parent: service_menu, text: "Update ID-List")]
@@ -58,12 +59,12 @@ pub struct BasicApp {
     refresh_menu: nwg::MenuItem,
 
     // Help Menu
-    #[nwg_control(text: "About")]
+    #[nwg_control(text: "Help")]
     #[nwg_events()]
     help_menu: nwg::Menu,
 
     #[nwg_control(parent: help_menu, text: "About")]
-    #[nwg_events()]
+    #[nwg_events( OnMenuItemSelected: [BasicApp::show_about] )]
     about_menu: nwg::MenuItem,
 
     #[nwg_layout(parent: window, spacing: 1)]
@@ -88,6 +89,19 @@ fn main() {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
     let _app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
+    match windows::is_app_elevated() {
+        true => {
+            ();
+        }
+        false => {
+            nwg::modal_error_message(
+                            &_app.window,
+                            "Error",
+                            "Administrator rights needed!",
+                        );
+                        nwg::stop_thread_dispatch();
+        }
+    }
     _app.add_firewall_rule().expect("Failed to add firewall rule!");
     _app.install_if_needed();
     nwg::dispatch_thread_events();

@@ -70,6 +70,7 @@ impl BasicApp {
                 "--accept-package-agreements",
                 "--silent",
                 "--disable-interactivity",
+                "--ignore-security-hash",
                 "--exact",
                 "dorssel.usbipd-win",
             ])
@@ -80,6 +81,7 @@ impl BasicApp {
 
         Ok(install.success())
     }
+
 
     pub fn add_firewall_rule(&self) -> Result<(), Box<dyn Error>> {
         let rule_name = "_Plex (Port 3240)";
@@ -169,9 +171,113 @@ impl BasicApp {
         }
     }
 
+    fn get_usbipd_version(&self) -> String {
+        let mut output = String::new();
+
+        let mut child = match Command::new("cmd")
+            .args(["/C", "usbipd --version"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(_) => return String::from("Error: Could not execute usbipd"),
+        };
+
+        if let Some(mut stdout) = child.stdout.take() {
+            let _ = stdout.read_to_string(&mut output);
+        }
+
+        let _ = child.wait();
+
+        let search = "Branch.master";
+        if let Some(pos) = output.find(search) {
+            let end = pos + search.len();
+            output = output[..end].to_string();
+        }
+
+        output.trim().to_string()
+    }
+
+    pub fn show_about(&self) {
+        let message = format!(
+            "Tool for sharing USB IP bus via IP\n\n\
+            Author: Justus Hofmann\n\
+            Program Version: {}\n\
+            usbipd-win Version: {}",
+            env!("CARGO_PKG_VERSION"),
+            self.get_usbipd_version()
+        );
+
+        nwg::modal_info_message(
+                            &self.window,
+                            "About",
+                            &message,
+                        );
+    }
+
+
+    pub fn upgrade_usbipd(&self) {
+        match self.usbipd_installed() {
+            true => {
+                let upgrade_result = Command::new("winget")
+                .args([
+                    "upgrade",
+                    "--silent",
+                    "--disable-interactivity",
+                    "--exact",
+                    "dorssel.usbipd-win"
+                ])
+                .creation_flags(CREATE_NO_WINDOW)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+
+            match upgrade_result {
+                Ok(status) => {
+                    if status.success() {
+                        nwg::modal_info_message(
+                            &self.window,
+                            "Upgrade",
+                            "Upgrade successful.",
+                        );
+                    } else {
+                        if self.usbipd_installed() {
+                            nwg::modal_error_message(
+                            &self.window,
+                            "Upgrade failed",
+                            "Winget failed to upgrade the package. The package is probably already installed.",
+                        );
+                        }
+                        else {
+                            nwg::modal_error_message(
+                            &self.window,
+                            "Upgrade failed",
+                            "Winget failed to upgrade the package.",
+                        );
+                        }
+                    }
+                }
+                Err(_) => {
+                    nwg::modal_error_message(
+                        &self.window,
+                        "Error",
+                        "Failed to run winget. Is it installed?",
+                    );
+                }
+            }
+            }
+            false => {
+                let _ = self.install_usbip();
+            }
+        }
+    }
+
+
     pub fn uninstall_usbip(&self) {
         let accepted = self.ask_user_yes_no(&String::from(
-            "Are you sure you want to unsinstall the pacakage?",
+            "Are you sure you want to uninstall the pacakage?",
         ));
 
         if accepted {

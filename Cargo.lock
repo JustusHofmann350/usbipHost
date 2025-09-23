@@ -245,6 +245,7 @@ version = "0.1.0"
 dependencies = [
  "native-windows-derive",
  "native-windows-gui",
+ "winapi",
 ]
 
 [[package]]

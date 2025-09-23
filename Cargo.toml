@@ -6,3 +6,7 @@ edition = "2024"
 [dependencies]
 native-windows-gui = "1.0.12"
 native-windows-derive = "1.0.3"
+
+[dependencies.winapi]
+version = "0.3.8"
+features = ["handleapi", "processthreadsapi", "winnt", "securitybaseapi", "impl-default"]
