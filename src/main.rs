@@ -5,20 +5,26 @@
 */
 mod menu_handlers;
 mod windows;
+mod device_list;
 
-extern crate native_windows_gui as nwg;
 extern crate native_windows_derive as nwd;
+extern crate native_windows_gui as nwg;
 
 use nwd::NwgUi;
 use nwg::NativeUi;
+use nwg::InsertListViewItem;
 
+use crate::device_list::UsbipDevice;
+use crate::device_list::list_devices;
 
 #[derive(Default, NwgUi)]
 pub struct BasicApp {
+    
+
     #[nwg_control(size: (940, 530), position: (300, 300), title: "Basic example", flags: "WINDOW|VISIBLE")]
     #[nwg_events( OnWindowClose: [BasicApp::say_goodbye] )]
     window: nwg::Window,
-    
+
     // File Menu
     #[nwg_control(text: "File")]
     #[nwg_events()]
@@ -42,7 +48,7 @@ pub struct BasicApp {
     upgrade_menu: nwg::MenuItem,
 
     #[nwg_control(parent: service_menu, text: "Uninstall")]
-    #[nwg_events( OnMenuItemSelected: [BasicApp::uninstall_usbip] )]
+    #[nwg_events( OnMenuItemSelected: [BasicApp::uninstall_usbipd] )]
     uninstall_menu: nwg::MenuItem,
 
     #[nwg_control(parent: service_menu, text: "Update ID-List")]
@@ -68,20 +74,84 @@ pub struct BasicApp {
     about_menu: nwg::MenuItem,
 
     #[nwg_layout(parent: window, spacing: 1)]
-    grid: nwg::GridLayout,
+    layout: nwg::GridLayout,
 
     // ListView
-
-    #[nwg_control(text: "Heisenberg", focus: true)]
-    #[nwg_layout_item(layout: grid, row: 0, col: 0)]
-    name_edit: nwg::TextInput,
-
-    #[nwg_control(text: "Say my name")]
-    #[nwg_layout_item(layout: grid, col: 0, row: 1, row_span: 2)]
-    #[nwg_events( OnButtonClick: [BasicApp::say_hello] )]
-    hello_button: nwg::Button
-
+    #[nwg_control(parent: window, list_style: nwg::ListViewStyle::Detailed, size: (940, 200), position: (10, 40))]
+    #[nwg_layout_item(layout: layout, col: 0, row: 1, col_span: 4)]
+    list: nwg::ListView,
 }
+
+impl BasicApp {
+    fn setup_columns(&self) {
+        if self.list.column_len() == 0 {
+            self.list.insert_column(nwg::InsertListViewColumn {
+                index: Some(0),
+                text: Some("BUSID".to_string()),
+                width: Some(150),
+                fmt: Some(nwg::ListViewColumnFlags::LEFT),
+            });
+            self.list.insert_column(nwg::InsertListViewColumn {
+                index: Some(1),
+                text: Some("VID:PID".to_string()),
+                width: Some(200),
+                fmt: Some(nwg::ListViewColumnFlags::LEFT),
+            });
+            self.list.insert_column(nwg::InsertListViewColumn {
+                index: Some(2),
+                text: Some("Device".to_string()),
+                width: Some(400),
+                fmt: Some(nwg::ListViewColumnFlags::LEFT),
+            });
+            self.list.insert_column(nwg::InsertListViewColumn {
+                index: Some(3),
+                text: Some("STATE".to_string()),
+                width: Some(200),
+                fmt: Some(nwg::ListViewColumnFlags::LEFT),
+            });
+        }
+    }
+
+    fn show_devices(&self) {
+        self.setup_columns();
+        self.list.clear();
+        let devices: Vec<UsbipDevice> = list_devices();
+
+        for usb_device in devices.iter() {
+            // 1. Insert the first column at the end of the list
+            self.list.insert_item(nwg::InsertListViewItem {
+                index: None, // None = append as new row
+                column_index: 0,
+                text: Some(usb_device.busid.clone()),
+                image: None,
+            });
+            
+            // 2. Get the newly inserted item's index
+            let row_index = self.list.len() as i32 - 1;
+            
+            // 3. Insert the other columns for this row
+            self.list.insert_item(nwg::InsertListViewItem {
+                index: Some(row_index), // Specify row
+                column_index: 1,
+                text: Some(usb_device.vidpid.clone()),
+                image: None,
+            });
+            self.list.insert_item(nwg::InsertListViewItem {
+                index: Some(row_index),
+                column_index: 2,
+                text: Some(usb_device.device.clone()),
+                image: None,
+            });
+            self.list.insert_item(nwg::InsertListViewItem {
+                index: Some(row_index),
+                column_index: 3,
+                text: Some(usb_device.state.clone()),
+                image: None,
+            });
+        }
+    }
+}
+
 
 
 
@@ -94,15 +164,13 @@ fn main() {
             ();
         }
         false => {
-            nwg::modal_error_message(
-                            &_app.window,
-                            "Error",
-                            "Administrator rights needed!",
-                        );
-                        nwg::stop_thread_dispatch();
+            nwg::modal_error_message(&_app.window, "Error", "Administrator rights needed!");
+            nwg::stop_thread_dispatch();
         }
     }
-    _app.add_firewall_rule().expect("Failed to add firewall rule!");
+    _app.add_firewall_rule()
+        .expect("Failed to add firewall rule!");
     _app.install_if_needed();
+    _app.show_devices();
     nwg::dispatch_thread_events();
 }

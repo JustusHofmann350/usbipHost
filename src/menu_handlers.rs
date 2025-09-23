@@ -8,14 +8,6 @@ use std::process::{Command, Stdio};
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 impl BasicApp {
-    pub fn say_hello(&self) {
-        nwg::modal_info_message(
-            &self.window,
-            "Hello",
-            &format!("Hello {}", self.name_edit.text()),
-        );
-    }
-
     pub fn say_goodbye(&self) {
         nwg::stop_thread_dispatch();
     }
@@ -48,7 +40,7 @@ impl BasicApp {
         }
     }
 
-    fn install_usbip(&self) -> Result<bool, io::Error> {
+    fn install_usbipd(&self) -> Result<bool, io::Error> {
         let hash_override = Command::new("winget")
             .args(["settings", "--enable", "InstallerHashOverride"])
             .creation_flags(CREATE_NO_WINDOW)
@@ -81,7 +73,6 @@ impl BasicApp {
 
         Ok(install.success())
     }
-
 
     pub fn add_firewall_rule(&self) -> Result<(), Box<dyn Error>> {
         let rule_name = "_Plex (Port 3240)";
@@ -131,10 +122,10 @@ impl BasicApp {
     pub fn install_if_needed(&self) {
         if !self.usbipd_installed() {
             let accepted =
-                self.ask_user_yes_no(&String::from("USBIP is not installed. Install now?"));
+                self.ask_user_yes_no(&String::from("usbipd-win is not installed. Install now?"));
 
             if accepted {
-                match self.install_usbip() {
+                match self.install_usbipd() {
                     Ok(true) => {
                         nwg::modal_info_message(
                             &self.window,
@@ -144,11 +135,7 @@ impl BasicApp {
                         nwg::stop_thread_dispatch();
                     }
                     Ok(false) => {
-                        nwg::modal_error_message(
-                            &self.window,
-                            "Error",
-                            "Error while installing.",
-                        );
+                        nwg::modal_error_message(&self.window, "Error", "Error while installing.");
                         nwg::stop_thread_dispatch();
                     }
                     Err(_) => {
@@ -210,83 +197,68 @@ impl BasicApp {
             self.get_usbipd_version()
         );
 
-        nwg::modal_info_message(
-                            &self.window,
-                            "About",
-                            &message,
-                        );
+        nwg::modal_info_message(&self.window, "About", &message);
     }
-
 
     pub fn upgrade_usbipd(&self) {
         match self.usbipd_installed() {
             true => {
                 let upgrade_result = Command::new("winget")
-                .args([
-                    "upgrade",
-                    "--silent",
-                    "--disable-interactivity",
-                    "--exact",
-                    "dorssel.usbipd-win"
-                ])
-                .creation_flags(CREATE_NO_WINDOW)
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status();
+                    .args([
+                        "upgrade",
+                        "--silent",
+                        "--disable-interactivity",
+                        "--exact",
+                        "dorssel.usbipd-win",
+                    ])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status();
 
-            match upgrade_result {
-                Ok(status) => {
-                    if status.success() {
-                        nwg::modal_info_message(
-                            &self.window,
-                            "Upgrade",
-                            "Upgrade successful.",
-                        );
-                    } else {
-                        if self.usbipd_installed() {
-                            nwg::modal_error_message(
-                            &self.window,
-                            "Upgrade failed",
-                            "Winget failed to upgrade the package. The package is probably already installed.",
-                        );
-                        }
-                        else {
-                            nwg::modal_error_message(
-                            &self.window,
-                            "Upgrade failed",
-                            "Winget failed to upgrade the package.",
-                        );
+                match upgrade_result {
+                    Ok(status) => {
+                        if status.success() {
+                            nwg::modal_info_message(&self.window, "Upgrade", "Upgrade successful.");
+                        } else {
+                            if self.usbipd_installed() {
+                                nwg::modal_error_message(
+                                    &self.window,
+                                    "Upgrade failed",
+                                    "Winget failed to upgrade the package. The package is probably already installed.",
+                                );
+                            } else {
+                                nwg::modal_error_message(
+                                    &self.window,
+                                    "Upgrade failed",
+                                    "Winget failed to upgrade the package.",
+                                );
+                            }
                         }
                     }
+                    Err(_) => {
+                        nwg::modal_error_message(
+                            &self.window,
+                            "Error",
+                            "Failed to run winget. Is it installed?",
+                        );
+                    }
                 }
-                Err(_) => {
-                    nwg::modal_error_message(
-                        &self.window,
-                        "Error",
-                        "Failed to run winget. Is it installed?",
-                    );
-                }
-            }
             }
             false => {
-                let _ = self.install_usbip();
+                let _ = self.install_usbipd();
             }
         }
     }
 
-
-    pub fn uninstall_usbip(&self) {
+    pub fn uninstall_usbipd(&self) {
         let accepted = self.ask_user_yes_no(&String::from(
             "Are you sure you want to uninstall the pacakage?",
         ));
 
         if accepted {
             let uninstall_result = Command::new("winget")
-                .args([
-                    "uninstall",
-                    "-h",
-                    "dorssel.usbipd-win"
-                ])
+                .args(["uninstall", "-h", "dorssel.usbipd-win"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
